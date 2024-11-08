@@ -12,7 +12,7 @@ func handleCowsay(w http.ResponseWriter, r *http.Request) {
 	// Get message from query parameter, default to "Hello!"
 	message := r.URL.Query().Get("message")
 	if message == "" {
-		message = "Hello!"
+		message = "Hello World!"
 	}
 
 	// Create a new cow

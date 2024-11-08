@@ -4,6 +4,8 @@ steps:
 
 images: ['us-docker.pkg.dev/gochen/images/gcb-say']
 options:
-  requestedVerifyOption: VERIFIED
+  provenance:
+    enabled: REQUIRED
+    region: GLOBAL
   sourceProvenanceHash: ['SHA256']
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
