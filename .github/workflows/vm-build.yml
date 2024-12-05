@@ -1,0 +1,61 @@
+name: 'vm_build'
+
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: 'An optional label to tag the build'
+        type: 'string'
+        required: true
+
+env:
+  PROJECT_ID: 'gochen'
+  WIF_PROVIDER: 'projects/220951778751/locations/global/workloadIdentityPools/github-mossy/providers/mossy'
+  WIF_SERVICE_ACCOUNT: 'packer@gochen.iam.gserviceaccount.com'
+  STAGING_BUCKET: 'gochen-vms'
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-vm-build'
+  cancel-in-progress: true
+
+jobs:
+  packer:
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    env:
+      BUILD_LABEL: '${{ inputs.label }}'
+    name: 'Run Packer'
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@v4'
+
+      - name: 'Auth'
+        id: 'auth'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          project_id: '${{ env.project_id }}'
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
+          create_credentials_file: true
+          export_environment_variables: true
+      
+      - name: 'Setup Packer'
+        uses: 'hashicorp/setup-packer@main'
+        with:
+          version: 'latest'
+
+      - name: 'Packer init'
+        working-directory: './vm/build-export'
+        run: 'packer init ./vm.pkr.hcl'
+
+      - name: 'Packer validate'
+        working-directory: './vm/build-export'
+        run: 'packer validate ./vm.pkr.hcl'
+
+      - name: 'Packer build'
+        working-directory: './vm/build-export'
+        env:
+          BUILDER_SERVICE_ACCOUNT: '${{ env.WIF_SERVICE_ACCOUNT }}'
+        run: 'packer build -color=false -on-error=abort ./vm.pkr.hcl'
