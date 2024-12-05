@@ -92,7 +92,8 @@ jobs:
             gcloud compute images export \
               --destination-uri="gs://${{ env.STAGING_BUCKET }}/${{ env.IMAGE_TARBALL_NAME }}.tar.gz" \
               --image="${{ env.IMAGE_TARBALL_NAME }}" \
-              --project="${{ env.PROJECT_ID }}"
+              --project="${{ env.PROJECT_ID }}" \
+              --compute-service-account="${{ env.WIF_SERVICE_ACCOUNT }}"
 
         - name: 'Download image'
           run: 'gcloud storage cp "gs://${{ env.STAGING_BUCKET }}/${{ env.IMAGE_TARBALL_NAME }}.tar.gz" .'
