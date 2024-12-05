@@ -1,4 +1,4 @@
-module github.com/yolocs/gcb-say
+module github.com/yolocs/mossy
 
 go 1.23
 
