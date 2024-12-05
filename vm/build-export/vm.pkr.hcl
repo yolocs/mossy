@@ -65,13 +65,14 @@ build {
     ]
   }
 
-  post-processor "googlecompute-export" {
-    service_account_email = var.builder_service_account
-    credentials_file      = var.cred_file
+  # This processor is likely having a bug.
+  # post-processor "googlecompute-export" {
+  #   service_account_email = var.builder_service_account
+  #   credentials_file      = var.cred_file
 
-    paths = [
-      "gs://gochen-vms/mossy-nginx-${var.build_label}.tar.gz"
-    ]
-    keep_input_artifact = true
-  }
+  #   paths = [
+  #     "gs://gochen-vms/mossy-nginx-${var.build_label}.tar.gz"
+  #   ]
+  #   keep_input_artifact = true
+  # }
 }
