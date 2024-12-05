@@ -13,6 +13,7 @@ env:
   WIF_PROVIDER: 'projects/220951778751/locations/global/workloadIdentityPools/github-mossy/providers/mossy'
   WIF_SERVICE_ACCOUNT: 'packer@gochen.iam.gserviceaccount.com'
   STAGING_BUCKET: 'gochen-vms'
+  DEV_REGISTRY: 'dev-vm-images'
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-vm-build'
@@ -59,3 +60,53 @@ jobs:
         env:
           BUILDER_SERVICE_ACCOUNT: '${{ env.WIF_SERVICE_ACCOUNT }}'
         run: 'packer build -color=false -on-error=abort ./vm.pkr.hcl'
+
+  publish:
+      runs-on: 'ubuntu-latest'
+      permissions:
+        contents: 'read'
+        id-token: 'write'
+      env:
+        IMAGE_TARBALL_NAME: 'mossy-nginx-${{ inputs.label }}'
+      steps:
+        - name: 'Checkout'
+          uses: 'actions/checkout@v4'
+
+        - name: 'Auth'
+          id: 'auth'
+          uses: 'google-github-actions/auth@v2'
+          with:
+            project_id: '${{ env.project_id }}'
+            workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+            service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
+            token_format: 'access_token'
+
+        - name: 'Set up Cloud SDK'
+          uses: 'google-github-actions/setup-gcloud@v2'
+          with:
+            version: '>= 363.0.0'
+
+        - name: 'Export temporary image to GCS'
+          run: |
+            gcloud compute images export \
+              --destination-uri="gs://${{ env.STAGING_BUCKET }}/${{ env.IMAGE_TARBALL_NAME }}.tar.gz" \
+              --image="${{ env.IMAGE_TARBALL_NAME }}" \
+              --project="${{ env.PROJECT_ID }}"
+
+        - name: 'Download image'
+          run: 'gcloud storage cp "gs://${{ env.STAGING_BUCKET }}/${{ env.IMAGE_TARBALL_NAME }}.tar.gz" .'
+
+        # TODO: attest later
+
+        - name: 'Upload to Artifact Registry'
+          run: |
+            gcloud artifacts generic upload \
+              --project="${{ env.PROJECT_ID }}" \
+              --source="${{ env.IMAGE_TARBALL_NAME }}.tar.gz" \
+              --package="mossy-nginx" \
+              --version="${{ inputs.label }}" \
+              --location="us-central1" \
+              --repository="${{ env.DEV_REGISTRY }}"
+
+        - name: 'Clean up'
+          run: 'gcloud storage rm "gs://${{ env.STAGING_BUCKET }}/${{ env.IMAGE_TARBALL_NAME }}.tar.gz"'
