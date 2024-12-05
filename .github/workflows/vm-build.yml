@@ -67,6 +67,7 @@ jobs:
       permissions:
         contents: 'read'
         id-token: 'write'
+        attestations: 'write'
       env:
         IMAGE_TARBALL_NAME: 'mossy-nginx-${{ inputs.label }}'
       steps:
@@ -87,6 +88,8 @@ jobs:
           with:
             version: '>= 363.0.0'
 
+        # There is a bug in the documentation!
+        # The service account must be able to create Cloud Build builds.
         - name: 'Export temporary image to GCS'
           run: |
             gcloud compute images export \
@@ -98,13 +101,27 @@ jobs:
         - name: 'Download image'
           run: 'gcloud storage cp "gs://${{ env.STAGING_BUCKET }}/${{ env.IMAGE_TARBALL_NAME }}.tar.gz" .'
 
-        # TODO: attest later
+        - name: 'Generate provenance'
+          id: 'attest-build-provenance'
+          uses: 'actions/attest-build-provenance@v1'
+          with:
+            subject-path: './${{ env.IMAGE_TARBALL_NAME }}.tar.gz'
+            subject-name: '${{ env.IMAGE_TARBALL_NAME }}.tar.gz'
+            show-summary: true
 
         - name: 'Upload to Artifact Registry'
           run: |
             gcloud artifacts generic upload \
               --project="${{ env.PROJECT_ID }}" \
               --source="${{ env.IMAGE_TARBALL_NAME }}.tar.gz" \
+              --package="mossy-nginx" \
+              --version="${{ inputs.label }}" \
+              --location="us-central1" \
+              --repository="${{ env.DEV_REGISTRY }}"
+
+            gcloud artifacts generic upload \
+              --project="${{ env.PROJECT_ID }}" \
+              --source="${{ steps.attest-build-provenance.outputs.bundle-path }}" \
               --package="mossy-nginx" \
               --version="${{ inputs.label }}" \
               --location="us-central1" \
