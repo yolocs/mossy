@@ -1,8 +1,8 @@
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-docker.pkg.dev/gochen/images/gcb-say', '.']
+    args: ['build', '-t', 'us-docker.pkg.dev/gochen/images/mossy', '.']
 
-images: ['us-docker.pkg.dev/gochen/images/gcb-say']
+images: ['us-docker.pkg.dev/gochen/images/mossy']
 options:
   requestedVerifyOption: VERIFIED
   sourceProvenanceHash: ['SHA256']
