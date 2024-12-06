@@ -83,6 +83,7 @@ jobs:
           run: |
             gcloud compute images create \
               --architecture="X86_64" --family="mossy-nginx-prod" \
+              --labels="sha256-truncated=$(sha256sum ${{ env.IMAGE_TARBALL_NAME }}.tar.gz | cut -c 1-32)"
               --source-uri="gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}-${{ inputs.suffix }}/${{ env.IMAGE_TARBALL_NAME }}.tar.gz" \
               "${{ env.IMAGE_TARBALL_NAME }}-${{ inputs.suffix }}"
 
