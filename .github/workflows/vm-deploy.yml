@@ -52,6 +52,8 @@ jobs:
 
         - name: 'Verify attestation'
           run: |
+            mkdir artifact
+
             gcloud artifacts generic download \
               --project="${{ env.PROJECT_ID }}" \
               --location="us-central1" \
@@ -65,16 +67,17 @@ jobs:
         # There is a bug in the documentation!
         # The service account must be able to create Cloud Build builds.
         - name: 'Export temporary image to GCS'
+          working-directory: 'artifact'
           run: |
             echo 'Upload VM image...'
-            gcloud storage cp "artifact/${{ env.IMAGE_TARBALL_NAME }}.tar.gz" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/"
+            gcloud storage cp "${{ env.IMAGE_TARBALL_NAME }}.tar.gz" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/"
 
             echo 'Upload provenance...'
-            gcloud storage cp "artifact/attestation.jsonl" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/"
+            gcloud storage cp "attestation.jsonl" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/"
 
             echo 'Upload faking VSA...'
-            echo 'fake' > artifact/vsa.json
-            gcloud storage cp "artifact/vsa.json" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/"
+            echo 'fake' > vsa.json
+            gcloud storage cp "vsa.json" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/"
 
         - name: 'Import VM image'
           run: |
