@@ -80,6 +80,7 @@ jobs:
             gcloud storage cp "vsa.json" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}-${{ inputs.suffix }}/"
 
         - name: 'Import VM image'
+          working-directory: 'artifact'
           run: |
             gcloud compute images create \
               --architecture="X86_64" --family="mossy-nginx-prod" \
