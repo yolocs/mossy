@@ -81,8 +81,9 @@ jobs:
 
         - name: 'Import VM image'
           run: |
-            gcloud compute images import \
-              --source-file="gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/${{ env.IMAGE_TARBALL_NAME }}.tar.gz" \
+            gcloud compute images create \
+              --architecture="X86_64" --family="mossy-nginx-prod" \
+              --source-uri="gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/${{ env.IMAGE_TARBALL_NAME }}.tar.gz" \
               "${{ env.IMAGE_TARBALL_NAME }}-${{ inputs.suffix }}"
 
         - name: 'Clean up'
