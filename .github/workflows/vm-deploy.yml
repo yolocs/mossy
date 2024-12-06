@@ -70,25 +70,25 @@ jobs:
           working-directory: 'artifact'
           run: |
             echo 'Upload VM image...'
-            gcloud storage cp "${{ env.IMAGE_TARBALL_NAME }}.tar.gz" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/"
+            gcloud storage cp "${{ env.IMAGE_TARBALL_NAME }}.tar.gz" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}-${{ inputs.suffix }}/"
 
             echo 'Upload provenance...'
-            gcloud storage cp "attestation.jsonl" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/"
+            gcloud storage cp "attestation.jsonl" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}-${{ inputs.suffix }}/"
 
             echo 'Upload faking VSA...'
             echo 'fake' > vsa.json
-            gcloud storage cp "vsa.json" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/"
+            gcloud storage cp "vsa.json" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}-${{ inputs.suffix }}/"
 
         - name: 'Import VM image'
           run: |
             gcloud compute images create \
               --architecture="X86_64" --family="mossy-nginx-prod" \
-              --source-uri="gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/${{ env.IMAGE_TARBALL_NAME }}.tar.gz" \
+              --source-uri="gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}-${{ inputs.suffix }}/${{ env.IMAGE_TARBALL_NAME }}.tar.gz" \
               "${{ env.IMAGE_TARBALL_NAME }}-${{ inputs.suffix }}"
 
         - name: 'Clean up'
           run: |
-            gcloud storage rm "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}.tar.gz"
+            gcloud storage rm -r "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}-${{ inputs.suffix }}"
 
         - name: 'Update VM template'
           run: 'echo "Here is when you can update VM template"'
