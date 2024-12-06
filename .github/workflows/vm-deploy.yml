@@ -62,7 +62,7 @@ jobs:
               --version="${{ inputs.label }}" \
               --destination="artifact"
 
-            cat ./attestation.jsonl
+            cat ./artifact/attestation.jsonl
 
         # There is a bug in the documentation!
         # The service account must be able to create Cloud Build builds.
