@@ -1,30 +1,35 @@
-name: 'vm_deploy'
+name: 'vm_promote'
 
 on:
   workflow_dispatch:
     inputs:
       label:
-        description: 'The label of the VM image to deploy'
+        description: 'The label of the VM image to promote'
         type: 'string'
         required: true
+      suffix:
+        description: 'A suffix to differentiate from dev images'
+        type: 'string'
+        required: false
+        default: 'prod'
 
 env:
   PROJECT_ID: 'gochen'
   WIF_PROVIDER: 'projects/220951778751/locations/global/workloadIdentityPools/github-mossy/providers/mossy'
   WIF_SERVICE_ACCOUNT: 'packer@gochen.iam.gserviceaccount.com'
+  DEV_REGISTRY: 'dev-vm-images'
   PROD_REGISTRY: 'prod-vm-images'
 
 concurrency:
-  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-vm-deploy'
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-vm-promote'
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  promote:
       runs-on: 'ubuntu-latest'
       permissions:
         contents: 'read'
         id-token: 'write'
-        attestations: 'write'
       env:
         IMAGE_TARBALL_NAME: 'mossy-nginx-${{ inputs.label }}'
       steps:
@@ -45,6 +50,19 @@ jobs:
           with:
             version: '>= 363.0.0'
 
+        - name: 'Verify attestation'
+          run: |
+            gcloud artifacts generic download \
+              --project="${{ env.PROJECT_ID }}" \
+              --location="us-central1" \
+              --repository="${{ env.DEV_REGISTRY }}" \
+              --package="mossy-nginx" \
+              --version="${{ inputs.label }}" \
+              --name="attestation.jsonl"
+              --destination="."
+
+            cat ./attestation.jsonl
+
         # There is a bug in the documentation!
         # The service account must be able to create Cloud Build builds.
         - name: 'Export temporary image to GCS'
@@ -52,24 +70,31 @@ jobs:
             gcloud artifacts generic download \
               --project="${{ env.PROJECT_ID }}" \
               --location="us-central1" \
-              --repository="${{ env.PROD_REGISTRY }}" \
+              --repository="${{ env.DEV_REGISTRY }}" \
               --package="mossy-nginx" \
               --version="${{ inputs.label }}" \
               --name="${{ env.IMAGE_TARBALL_NAME }}.tar.gz"
               --destination="."
 
-            gcloud storage cp "${{ env.IMAGE_TARBALL_NAME }}.tar.gz" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}.tar.gz"
+            echo 'Upload VM image...'
+            gcloud storage cp "${{ env.IMAGE_TARBALL_NAME }}.tar.gz" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/"
+
+            echo 'Upload provenance...'
+            gcloud storage cp "attestation.jsonl" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/"
+
+            echo 'Upload faking VSA...'
+            echo 'fake' > vsa.json
+            gcloud storage cp "vsa.json" "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/"
 
         - name: 'Import VM image'
           run: |
             gcloud compute images import \
-              --source-file="gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}.tar.gz" \
-              "${{ env.IMAGE_TARBALL_NAME }}-prod"
-
-        - name: 'Launch or update VM template'
-          run: 'echo "Launch or update VM template"'
+              --source-file="gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}/${{ env.IMAGE_TARBALL_NAME }}.tar.gz" \
+              "${{ env.IMAGE_TARBALL_NAME }}-${{ inputs.suffix }}"
 
         - name: 'Clean up'
           run: |
             gcloud storage rm "gs://gochen-vms/deploy/${{ env.IMAGE_TARBALL_NAME }}.tar.gz"
 
+        - name: 'Update VM template'
+          run: 'echo "Here is when you can update VM template"'
